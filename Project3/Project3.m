@@ -37,6 +37,8 @@ Fs = SampleFreq*BitLength;  %ratio of samples to 1 second
 
 X = linspace(0,BitLength,Fs);
 Y = zeros([TotalLen,Fs]);
+DecodedMessage = zeros([TotalLen,Fs]);
+DecodedBinary = char(zeros([1,(TotalLen)]));
 
 WaveSynthTime = tic();
 for q = 1:TotalLen
@@ -54,8 +56,40 @@ WaveSynthTimeElapsed = toc(WaveSynthTime);
 disp('Time encoding:');
 disp(WaveSynthTimeElapsed);
 
+%begin decoding
+DecodeTime = tic();
+for w = 1:TotalLen
+    DecodedMessage(w, 1:Fs) = fft(Y(w, 1:Fs));
+    DecodedMessage(w, 1:Fs) = fftshift(DecodedMessage(w, 1:Fs));
+    Magnitude = abs(DecodedMessage(w,1:Fs)).^2;
+    [MaximumIndex, Index] = max(Magnitude(Fs/2+2:Fs));
+    Index = Index / BitLength;
+    if Index == 20000000
+        DecodedBinary(w) = '0';
+    else
+        DecodedBinary(w) = '1';
+    end
+        
+end
+DecodeTimeElapsed = toc(DecodeTime);
+disp('Time decoding:');
+disp(DecodeTimeElapsed);
+
+DecodedBinary = int8(DecodedBinary);
+
+for ii = 1:StringLen
+    for jj = 1:CharLen
+         if DecodedBinary(ii*jj) == 48
+            A(ii,jj) = 0;
+         else
+            A(ii,jj) = 1;
+         end
+    end
+    %A(ii, 1:CharLen) = bin2dec(char(A(ii, 1:CharLen)));
+end
 
 
+    
 %{
 PROJECT NOTES
 
