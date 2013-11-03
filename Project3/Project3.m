@@ -20,7 +20,7 @@ disp(Message);
 
 BinaryCharacters = dec2bin(Message);    %convert to binary
 %BinaryCharacters = int8(Message);
-StringLen = length(BinaryCharacters);   %find how many characters we have
+StringLen = 2;%length(BinaryCharacters);   %find how many characters we have
 CharLen = 7;                            %length of char will always be 7
 TotalLen = StringLen * CharLen;
 
@@ -36,6 +36,7 @@ end
 SampleFreq = 50000000;      %sampling frequency (2.5x max expected freq)
 BitLength = .001;           %time in seconds alloted for each bit
 Fs = SampleFreq*BitLength;  %ratio of samples to 1 second
+AxisX = linspace(-Fs/2, Fs/2, Fs);
 
 X = linspace(0,BitLength,Fs);   %create time domain
 Y = zeros([TotalLen,Fs]);       %create a zero matrix for the signals
@@ -47,13 +48,17 @@ WaveSynthTime = tic();              %start encoding clock
 
 for q = 1:StringLen
     for h = 1:CharLen
-        if BinaryMessage(q) == 48
+        if BinaryMessage(q,h) == 48
+            %disp('48 encoded as 20M at row');
+            %disp((q - 1) * CharLen + h);
            for k = 1:Fs
-               Y(q,k) = sin(20000000*2*pi*X(k));
+               Y(((q - 1) * CharLen + h),k) = sin(20000000*2*pi*X(k));
            end
         else
+            %disp('49 encoded as 10M at row');
+            %disp((q - 1) * CharLen + h);
            for k = 1:Fs
-           Y(q,k) = sin(10000000*2*pi*X(k));
+               Y(((q - 1) * CharLen + h),k) = sin(10000000*2*pi*X(k));
            end
         end
     end
@@ -66,29 +71,34 @@ disp(WaveSynthTimeElapsed);                     %print time taken to encode
 
 %begin decoding
 DecodeTime = tic();         %start decode clock
-for w = 1:TotalLen
-    DecodedMessage(w, 1:Fs) = fft(Y(w, 1:Fs));                      %get the frequency domain
-    DecodedMessage(w, 1:Fs) = fftshift(DecodedMessage(w, 1:Fs));    %shift it to where 0Hz is at center
+for w = 1:StringLen
+    for d = 1:CharLen
+    DecodedMessage(((w - 1) * CharLen + d), 1:Fs) = fft(Y(w, 1:Fs));                      %get the frequency domain
+    disp('decoding at: ');
+    disp(((w - 1) * CharLen + d));
+    DecodedMessage(((w - 1) * CharLen + d), 1:Fs) = fftshift(DecodedMessage(w, 1:Fs));    %shift it to where 0Hz is at center
     Magnitude = abs(DecodedMessage(w,1:Fs)).^2;                     %find the magnitudes of the freq components
     [MaximumIndex, Index] = max(Magnitude(Fs/2+2:Fs));              %find the index value where there is a maximum magnitude
     %NOTE: this accounts for positive frequencyies and offsets by two
     %for the zero frequency and the "sum" which apparently is part of fft()    
-    disp(Index);
-    pause();
-   
+    %disp(Index);
+
     if Index == 20000               %if the freq is 20k (with respect to 1ms)
-        DecodedBinary(w) = 48;       %its a zero
+        %disp('48 decoded as 20M');
+        DecodedBinary(w, d) = 48;       %its a zero
     else                            %otherwise
-        DecodedBinary(w) = 49;       %its a 1
-    end     
+        %disp('49 decoded as 10M');
+        DecodedBinary(w, d) = 49;       %its a 1
+    end  
+    end
 end
 
 DecodeTimeElapsed = toc(DecodeTime);        %stop decode clock
 disp('Time decoding:');                     %le print
 disp(DecodeTimeElapsed);                    %le print the time
 
-%{
-DecodedBinary = int8(DecodedBinary);
+
+%DecodedBinary = int8(DecodedBinary);
 
 for ii = 1:StringLen
     for jj = 1:CharLen
@@ -100,7 +110,18 @@ for ii = 1:StringLen
     end
     %A(ii, 1:CharLen) = bin2dec(char(A(ii, 1:CharLen)));
 end
-%}
+
+
+for kk = 1:TotalLen
+    B(kk) = dec2bin(A(kk));
+end
+
+B = bin2dec(B);
+
+disp('~~~~~');
+disp(char(B));
+disp('~~~~~');
+
 
 EndTime = toc(TotalTime);
 disp('Total Time:');                     %le print
