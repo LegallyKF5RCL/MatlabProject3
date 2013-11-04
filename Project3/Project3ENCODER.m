@@ -14,7 +14,8 @@ Message = input('Input Message (must not be all numbers): ', 's');    %prompt us
 
 %initialize
 BinaryCharacters = dec2bin(Message);    %convert to binary
-StringLen = length(BinaryCharacters);   %find how many characters we have
+StringLen = size(BinaryCharacters);   %find how many characters we have
+StringLen = StringLen(1,1);
 CharLen = 7;                            %length of char will always be 7
 TotalLen = StringLen * CharLen;         %total amount of 
 
