@@ -1,6 +1,6 @@
 %{
 EE-2347 Project 3
-Contributers: Brian McRee
+Contributers: Brian McRee, Jacob Sanchez
 10/13/2013
 
 Published open-source on Git: LegallyKF5RCL/MatlabProject3
@@ -12,14 +12,11 @@ close all;
 
 TotalTime = tic();
 
-%MessageData = '5';
-%save('Message.txt', MessageData);
 FileP = fopen('Message.txt');
 Message = fscanf(FileP, '%s');
 disp(Message);
 
 BinaryCharacters = dec2bin(Message);    %convert to binary
-%BinaryCharacters = int8(Message);
 StringLen = length(BinaryCharacters);   %find how many characters we have
 CharLen = 7;                            %length of char will always be 7
 TotalLen = StringLen * CharLen;
@@ -33,63 +30,57 @@ for i = 1:StringLen
     end
 end
 
-SampleFreq = 50000000;      %sampling frequency (2.5x max expected freq)
-BitLength = .001;           %time in seconds alloted for each bit
-Fs = SampleFreq*BitLength;  %ratio of samples to 1 second
-AxisX = linspace(-Fs/2, Fs/2, Fs);
+%define variables and constants
+SampleFreq = 50000000;              %sampling frequency (2.5x max expected freq)
+BitLength = .001;                   %time in seconds alloted for each bit
+Fs = SampleFreq*BitLength;          %ratio of samples to 1 second
 
-X = linspace(0,BitLength,Fs);   %create time domain
-Y = zeros([TotalLen,Fs]);       %create a zero matrix for the signals
-DecodedMessage = zeros([TotalLen,Fs]);          %create matrix for decoding the message
-DecodedBinary = int8(zeros([StringLen,CharLen]));    %create a matrix for the bits after the message is decoded
+%make matricies...
+AxisX = linspace(-Fs/2, Fs/2, Fs);  %variable for plotting the frequency domain
+X = linspace(0,BitLength,Fs);       %create time domain
+Y = zeros([TotalLen,Fs]);                           %create a zero matrix for the signals
+DecodedMessage = zeros([TotalLen,Fs]);              %create a zero matrix for decoding the message
+DecodedBinary = int8(zeros([StringLen,CharLen]));   %create a zero matrix for the bits after the message is decoded
 
 WaveSynthTime = tic();              %start encoding clock
 
 
-for q = 1:StringLen
-    for h = 1:CharLen
-        if BinaryMessage(q,h) == 48
-            %disp('48 encoded as 20M at row');
-            %disp((q - 1) * CharLen + h);
-           for k = 1:Fs
+for q = 1:StringLen                     %for each row
+    for h = 1:CharLen                   %for each value in the row
+        if BinaryMessage(q,h) == 48     %if it is equal to 48
+           for k = 1:Fs                 
+               %write the value as a 20MHz sine wave
                Y(((q - 1) * CharLen + h),k) = sin(20000000*2*pi*X(k));
            end
         else
-            %disp('49 encoded as 10M at row');
-            %disp((q - 1) * CharLen + h);
            for k = 1:Fs
+               %write the value as a 10MHz sine wave
                Y(((q - 1) * CharLen + h),k) = sin(10000000*2*pi*X(k));
            end
         end
     end
 end
 
-
+%output time
 WaveSynthTimeElapsed = toc(WaveSynthTime);      %stop encoding clock
 disp('Time encoding:');                         %print time taken to encode
 disp(WaveSynthTimeElapsed);                     %print time taken to encode
 
 %begin decoding
 DecodeTime = tic();         %start decode clock
-for w = 1:StringLen
+for w = 1:StringLen         
     for d = 1:CharLen
         DecodedMessage(((w - 1) * CharLen + d), 1:Fs) = fft(Y(((w - 1) * CharLen + d), 1:Fs));                      %get the frequency domain
-        %disp('decoding at: ');
-        %disp(((w - 1) * CharLen + d));
         DecodedMessage(((w - 1) * CharLen + d), 1:Fs) = fftshift(DecodedMessage(((w - 1) * CharLen + d), 1:Fs));    %shift it to where 0Hz is at center
         Magnitude = abs(DecodedMessage(((w - 1) * CharLen + d),1:Fs)).^2;                     %find the magnitudes of the freq components
-    [MaximumIndex, Index] = max(Magnitude(Fs/2+2:Fs));              %find the index value where there is a maximum magnitude
-    %NOTE: this accounts for positive frequencyies and offsets by two
-    %for the zero frequency and the "sum" which apparently is part of fft()    
-    %disp(Index);
-    %pause();
-    if Index == 20000               %if the freq is 20k (with respect to 1ms)
-        %disp('48 decoded as 20M');
-        DecodedBinary(w, d) = 48;       %its a zero
-    else                            %otherwise
-        %disp('49 decoded as 10M');
-        DecodedBinary(w, d) = 49;       %its a 1
-    end  
+        [MaximumIndex, Index] = max(Magnitude(Fs/2+2:Fs));              %find the index value where there is a maximum magnitude
+        %NOTE: this accounts for positive frequencyies and offsets by two
+        %for the zero frequency and the "sum" which apparently is part of fft()    
+        if Index == 20000                   %if the freq is 20k (with respect to 1ms)
+            DecodedBinary(w, d) = 48;       %its a 0
+        else                                %otherwise
+            DecodedBinary(w, d) = 49;       %its a 1
+        end
     end
 end
 
@@ -97,27 +88,22 @@ DecodeTimeElapsed = toc(DecodeTime);        %stop decode clock
 disp('Time decoding:');                     %le print
 disp(DecodeTimeElapsed);                    %le print the time
 
-
-%DecodedBinary = int8(DecodedBinary);
-
-for ii = 1:StringLen
-    for jj = 1:CharLen
-         if DecodedBinary(ii,jj) == 48
-            A(ii,jj) = 0;
-         else
-            A(ii,jj) = 1;
+for ii = 1:StringLen                        %for each row
+    for jj = 1:CharLen                      %for each bit in the row
+         if DecodedBinary(ii,jj) == 48      %if that bit is a decimal 48
+            A(ii,jj) = 0;                   %set the bit as a 0
+         else                               %otherwise
+            A(ii,jj) = 1;                   %set the bit as a 1
          end
     end
-    %A(ii, 1:CharLen) = bin2dec(char(A(ii, 1:CharLen)));
 end
 
-
-for kk = 1:StringLen
+for kk = 1:StringLen                        %loop through everything
     for asdf = 1:CharLen
-        B(kk,asdf) = dec2bin(A(kk,asdf));
+        B(kk,asdf) = dec2bin(A(kk,asdf));   %convert the decimals to a binary sequence
     end
 end
-B = bin2dec(B);
+B = bin2dec(B);     %convert the binary sequence into a decimal number that represents the message character
 
 disp('~~~~~');
 disp(Message);
